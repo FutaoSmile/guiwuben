@@ -176,10 +176,10 @@ async function confirmDelete() {
           <span class="field-value" v-if="settingsStore.amountVisible">¥{{ formatCost(monthlyCost) }}</span>
           <span class="field-value blurred" v-else>¥••••••</span>
         </div>
-        <div v-if="!isExpense" class="field-row">
-          <span class="field-label">使用状态</span>
+        <div class="field-row">
+          <span class="field-label">{{ isExpense ? '费用状态' : '使用状态' }}</span>
           <span class="field-value status-badge" :class="item.status === 'active' ? 'status-active' : 'status-ended'">
-            {{ item.status === 'active' ? '使用中' : '已结束' }}
+            {{ isExpense ? (!item.endDate ? '持续中' : (item.status === 'active' ? '进行中' : '已结束')) : (item.status === 'active' ? '使用中' : '已结束') }}
           </span>
         </div>
         <div v-if="item.endDate" class="field-row">

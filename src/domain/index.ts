@@ -26,6 +26,22 @@ export function today(): string {
   return `${y}-${m}-${day}`;
 }
 
+export type DateShortcut = 'month-start' | 'month-end' | 'year-start' | 'year-end';
+
+/** 根据参考日期生成常用的月初、月末、年初和年末日期。 */
+export function getDateShortcut(shortcut: DateShortcut, referenceDate = today()): string {
+  const reference = parseLocalDate(referenceDate);
+  const year = reference.getFullYear();
+  const month = reference.getMonth();
+
+  switch (shortcut) {
+    case 'month-start': return formatLocalDate(new Date(year, month, 1));
+    case 'month-end': return formatLocalDate(new Date(year, month + 1, 0));
+    case 'year-start': return formatLocalDate(new Date(year, 0, 1));
+    case 'year-end': return formatLocalDate(new Date(year, 11, 31));
+  }
+}
+
 /**
  * 持有天数计算
  * 按自然日，包含开始日和结束日，最少为 1
@@ -430,12 +446,14 @@ export function calcTotalInvestment(item: {
   firstPaymentDate?: string;
 }): number {
   if (item.recordType === 'expense') {
-    if (!item.startDate || !item.endDate) return item.billingAmountInCents;
+    if (!item.startDate) return item.billingAmountInCents;
+    const periodEnd = item.endDate || today();
+    if (periodEnd < item.startDate) return 0;
     return calcExpensePeriodTotalInCents(
       item.billingType,
       item.billingAmountInCents,
       item.startDate,
-      item.endDate
+      periodEnd
     );
   }
   if (item.billingType === 'one_time') {

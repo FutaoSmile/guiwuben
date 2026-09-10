@@ -5,7 +5,7 @@ import { useItemsStore } from '../stores/items';
 import { useCategoriesStore } from '../stores/categories';
 import type { BillingType, ItemStatus, RecordType } from '../types';
 import { isValidDate, isNotFutureDate } from '../utils';
-import { calcExpensePeriodTotalInCents, calcItemDailyCost, calcPeriodDays, formatAmount, formatCost, resolveRecordType, today } from '../domain';
+import { calcExpensePeriodTotalInCents, calcItemDailyCost, calcPeriodDays, formatAmount, formatCost, getDateShortcut, resolveRecordType, today, type DateShortcut } from '../domain';
 import { ITEM_EMOJIS, getDefaultItemEmoji, isItemEmoji } from '../utils/itemEmoji';
 
 const route = useRoute();
@@ -45,15 +45,22 @@ interface FieldErrors {
 }
 
 const errors = ref<FieldErrors>({});
+const dateShortcuts: { label: string; value: DateShortcut }[] = [
+  { label: '月初', value: 'month-start' },
+  { label: '月末', value: 'month-end' },
+  { label: '年初', value: 'year-start' },
+  { label: '年末', value: 'year-end' },
+];
 
 const isExpense = computed(() => recordType.value === 'expense');
+const effectivePeriodEnd = computed(() => endDate.value || today());
 const expenseAmountLabel = computed(() => billingType.value === 'monthly' ? '每月金额' : '每年金额');
 const expenseAmountHelp = computed(() => billingType.value === 'monthly'
   ? '填写每个月需要支付的金额，系统按 × 12 ÷ 365 折算日均'
   : '填写每年需要支付的金额，系统按 ÷ 365 折算日均');
 const periodDays = computed(() => {
-  if (!isExpense.value || !isValidDate(startDate.value) || !isValidDate(endDate.value) || endDate.value < startDate.value) return 0;
-  return calcPeriodDays(startDate.value, endDate.value);
+  if (!isExpense.value || !isValidDate(startDate.value) || !isValidDate(effectivePeriodEnd.value) || effectivePeriodEnd.value < startDate.value) return 0;
+  return calcPeriodDays(startDate.value, effectivePeriodEnd.value);
 });
 const previewDailyCost = computed(() => {
   if (billingAmountYuan.value === null || billingAmountYuan.value < 0) return null;
@@ -74,7 +81,7 @@ const previewPeriodTotal = computed(() => {
     billingType.value,
     Math.round(billingAmountYuan.value * 100),
     startDate.value,
-    endDate.value
+    effectivePeriodEnd.value
   );
 });
 
@@ -136,9 +143,9 @@ function validate(): boolean {
 
   if (isExpense.value) {
     if (!startDate.value || !isValidDate(startDate.value)) newErrors.startDate = '请选择周期开始日';
-    if (!endDate.value || !isValidDate(endDate.value)) {
-      newErrors.endDate = '请选择周期结束日';
-    } else if (startDate.value && endDate.value < startDate.value) {
+    if (endDate.value && !isValidDate(endDate.value)) {
+      newErrors.endDate = '请输入有效的周期结束日';
+    } else if (endDate.value && startDate.value && endDate.value < startDate.value) {
       newErrors.endDate = '周期结束日不得早于开始日';
     }
   } else {
@@ -177,7 +184,7 @@ async function handleSubmit() {
       firstPaymentDate: undefined,
       categoryId: categoryId.value,
       warrantyType: 'unset' as const,
-      status: isExpense.value ? (endDate.value < today() ? 'ended' : 'active') as ItemStatus : status.value,
+      status: isExpense.value ? (endDate.value && endDate.value < today() ? 'ended' : 'active') as ItemStatus : status.value,
       endDate: endDate.value || undefined,
       note: note.value.trim() || undefined,
       cardColor: cardColor.value || undefined,
@@ -222,6 +229,12 @@ function goBack() {
 function getNumberInput(event: Event): number | null {
   const val = (event.target as HTMLInputElement).value;
   return val === '' ? null : parseFloat(val);
+}
+
+function applyDateShortcut(target: 'start' | 'end', shortcut: DateShortcut) {
+  const value = getDateShortcut(shortcut);
+  if (target === 'start') startDate.value = value;
+  else endDate.value = value;
 }
 
 async function openEmojiPicker() {
@@ -409,18 +422,38 @@ function selectEmoji(emoji: string) {
             <div class="form-group half">
               <label class="form-label" for="item-start-date">周期开始日 <span class="required">*</span></label>
               <input id="item-start-date" v-model="startDate" type="date" class="form-input" />
+              <div class="quick-date-ops" aria-label="周期开始日快捷选择">
+                <button
+                  v-for="shortcut in dateShortcuts"
+                  :key="`start-${shortcut.value}`"
+                  type="button"
+                  class="quick-date-btn"
+                  @click="applyDateShortcut('start', shortcut.value)"
+                >{{ shortcut.label }}</button>
+              </div>
               <p v-if="errors.startDate" class="field-error">{{ errors.startDate }}</p>
             </div>
             <div class="form-group half">
-              <label class="form-label" for="item-end-date">周期结束日 <span class="required">*</span></label>
-              <input id="item-end-date" v-model="endDate" type="date" class="form-input" :min="startDate" />
+              <label class="form-label" for="item-end-date">周期结束日 <span class="optional">可选</span></label>
+              <input id="item-end-date" v-model="endDate" type="date" class="form-input" :min="startDate" aria-describedby="end-date-help" />
+              <div class="quick-date-ops" aria-label="周期结束日快捷选择">
+                <button
+                  v-for="shortcut in dateShortcuts"
+                  :key="`end-${shortcut.value}`"
+                  type="button"
+                  class="quick-date-btn"
+                  @click="applyDateShortcut('end', shortcut.value)"
+                >{{ shortcut.label }}</button>
+                <button type="button" class="quick-date-btn quick-date-btn--ongoing" @click="endDate = ''">持续中</button>
+              </div>
+              <p id="end-date-help" class="field-help">留空表示持续发生，累计支出自动计算到今天</p>
               <p v-if="errors.endDate" class="field-error">{{ errors.endDate }}</p>
             </div>
           </div>
           <div v-if="previewDailyCost !== null" class="cost-preview" aria-live="polite">
-            <span>{{ billingType === 'monthly' ? '月费' : '年费' }}折算 · 周期 {{ periodDays }} 天</span>
+            <span>{{ billingType === 'monthly' ? '月费' : '年费' }}折算 · {{ endDate ? `周期 ${periodDays} 天` : `持续中，已计算 ${periodDays} 天` }}</span>
             <strong>日均 ¥{{ formatCost(previewDailyCost) }}</strong>
-            <small v-if="previewPeriodTotal !== null">本周期预计支出 ¥{{ formatAmount(previewPeriodTotal) }}，包含开始日与结束日</small>
+            <small v-if="previewPeriodTotal !== null">{{ endDate ? '本周期预计支出' : '截至今天折算支出' }} ¥{{ formatAmount(previewPeriodTotal) }}，包含开始日与计算截止日</small>
           </div>
         </template>
       </section>
@@ -719,6 +752,13 @@ function selectEmoji(emoji: string) {
   color: var(--color-text-tertiary);
 }
 
+.optional {
+  margin-left: 4px;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  color: var(--color-text-tertiary);
+}
+
 .cost-preview {
   padding: var(--spacing-md);
   border: 1px solid var(--color-border);
@@ -745,17 +785,29 @@ function selectEmoji(emoji: string) {
 }
 
 .quick-date-btn {
-  font-size: 11px;
-  padding: 3px 8px;
+  flex: 1 1 56px;
+  font-size: var(--font-size-xs);
+  padding: 8px 10px;
   border-radius: var(--radius-sm);
   background: var(--color-surface-secondary);
   color: var(--color-text-secondary);
   border: 1px solid var(--color-border);
   cursor: pointer;
   transition: all 0.15s;
-  min-height: 28px;
+  min-height: 44px;
   line-height: 1;
   white-space: nowrap;
+}
+
+.quick-date-btn--ongoing {
+  color: var(--color-primary);
+  border-color: var(--color-primary-light);
+  background: var(--color-primary-bg);
+}
+
+.quick-date-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .quick-date-btn:active {

@@ -9,6 +9,7 @@ import {
   calcNextPaymentDate,
   calcTotalInvestment,
   calcItemDailyCost,
+  calcItemDays,
   calcPeriodDays,
   calcItemDailyCostOnDate,
   calcExpensePeriodTotalInCents,
@@ -18,6 +19,7 @@ import {
   formatCost,
   formatCostWithUnit,
   today,
+  getDateShortcut,
 } from '../domain';
 
 // 统一测试日期设为 2026-09-09
@@ -33,6 +35,13 @@ afterEach(() => {
 describe('今日日期', () => {
   it('应返回 2026-09-09', () => {
     expect(today()).toBe('2026-09-09');
+  });
+
+  it('生成月初、月末、年初和年末快捷日期', () => {
+    expect(getDateShortcut('month-start', '2026-09-09')).toBe('2026-09-01');
+    expect(getDateShortcut('month-end', '2026-09-09')).toBe('2026-09-30');
+    expect(getDateShortcut('year-start', '2026-09-09')).toBe('2026-01-01');
+    expect(getDateShortcut('year-end', '2026-09-09')).toBe('2026-12-31');
   });
 });
 
@@ -432,6 +441,19 @@ describe('calcTotalInvestment', () => {
       endDate: '2026-12-31',
     });
     expect(inv).toBe(12000);
+  });
+
+  it('未设置结束日的持续费用累计到今天', () => {
+    const item = {
+      recordType: 'expense' as const,
+      billingType: 'monthly' as const,
+      billingAmountInCents: 1000,
+      purchaseDate: '2026-01-01',
+      startDate: '2026-01-01',
+      status: 'active' as const,
+    };
+    expect(calcItemDays(item)).toBe(252);
+    expect(calcTotalInvestment(item)).toBe(8285);
   });
 
   it('月付物品总投入 = 金额 × 已付周期', () => {
