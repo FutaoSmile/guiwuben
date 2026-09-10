@@ -155,13 +155,4 @@ const emit = defineEmits<{
   }
 }
 
-/* ========= Dark Mode ========= */
-@media (prefers-color-scheme: dark) {
-  .category-tabs {
-    --tabs-pill-bg: #2a2a3e;
-    --tabs-pill-text: #9ca3af;
-    --tabs-pill-active-text: #e4e4ef;
-    --tabs-pill-active-bg: rgba(129, 140, 248, 0.15);
-  }
-}
 </style>

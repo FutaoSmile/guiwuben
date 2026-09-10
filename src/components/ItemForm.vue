@@ -766,20 +766,4 @@ function handleCancel(): void {
   }
 }
 
-/* ========= Dark Mode ========= */
-@media (prefers-color-scheme: dark) {
-  .item-form {
-    --form-bg: transparent;
-    --form-text: #e4e4ef;
-    --form-text-secondary: #9ca3af;
-    --form-border: #2e2e42;
-    --form-accent: #818cf8;
-    --form-error: #f87171;
-    --form-input-bg: #252538;
-  }
-
-  .field__radio-pill--active {
-    background: rgba(129, 140, 248, 0.12);
-  }
-}
 </style>

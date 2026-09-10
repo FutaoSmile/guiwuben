@@ -402,18 +402,4 @@ function investmentLabel(): string {
   .summary-card__stat-icon { display: none; }
 }
 
-/* ========= Dark Mode ========= */
-@media (prefers-color-scheme: dark) {
-  .summary-card {
-    --card-bg: #1e1e2e;
-    --card-text: #e4e4ef;
-    --card-text-secondary: #9ca3af;
-    --card-accent: #818cf8;
-    --card-border: #2e2e42;
-  }
-
-  .summary-card__action-btn:active {
-    background: rgba(255, 255, 255, 0.08);
-  }
-}
 </style>

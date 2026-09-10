@@ -1,4 +1,5 @@
 :root {
+  color-scheme: light;
   /* Brand colors */
   --color-primary: #5757f6;
   --color-primary-light: #7c83ff;
@@ -69,21 +70,6 @@
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
   --content-max-width: 520px;
-}
-
-/* Dark mode */
-[data-theme="dark"] {
-  --color-bg: #0f172a;
-  --color-surface: #1e293b;
-  --color-surface-secondary: #334155;
-  --color-border: #475569;
-  --color-text-primary: #f1f5f9;
-  --color-text-secondary: #cbd5e1;
-  --color-text-tertiary: #64748b;
-  --color-primary-bg: #1e1b4b;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.5);
 }
 
 /* Reset & Base */

@@ -3,7 +3,6 @@ export type WarrantyType = 'unset' | 'none' | 'custom';
 export type BillingType = 'one_time' | 'monthly' | 'yearly';
 export type RecordType = 'asset' | 'expense';
 export type CostDisplayUnit = 'day' | 'month';
-export type ThemeMode = 'system' | 'light' | 'dark';
 
 export interface Item {
   id: string;
@@ -47,7 +46,6 @@ export interface AppSettings {
   amountVisible: boolean;
   costDisplayUnit: CostDisplayUnit;
   defaultSort: string;
-  theme: ThemeMode;
 }
 
 export interface BackupImage {

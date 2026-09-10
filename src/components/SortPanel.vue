@@ -356,16 +356,4 @@ function handleBackdropClick(e: MouseEvent): void {
   }
 }
 
-/* ========= Dark Mode ========= */
-@media (prefers-color-scheme: dark) {
-  .sort-panel {
-    --panel-bg: #1e1e2e;
-    --panel-text: #e4e4ef;
-    --panel-text-secondary: #9ca3af;
-    --panel-accent: #818cf8;
-    --panel-border: #2e2e42;
-    --panel-option-bg: #252538;
-    --panel-option-active-bg: rgba(129, 140, 248, 0.12);
-  }
-}
 </style>

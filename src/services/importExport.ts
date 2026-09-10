@@ -12,7 +12,6 @@ import type {
   BillingType,
   WarrantyType,
   ItemStatus,
-  ThemeMode,
   CostDisplayUnit,
 } from '../types';
 import { db } from '../db';
@@ -41,9 +40,6 @@ const VALID_WARRANTY_TYPES: WarrantyType[] = ['unset', 'none', 'custom'];
 
 /** 合法的 ItemStatus 枚举值 */
 const VALID_ITEM_STATUSES: ItemStatus[] = ['active', 'ended'];
-
-/** 合法的 ThemeMode 枚举值 */
-const VALID_THEME_MODES: ThemeMode[] = ['system', 'light', 'dark'];
 
 /** 合法的 CostDisplayUnit 枚举值 */
 const VALID_COST_UNITS: CostDisplayUnit[] = ['day', 'month'];
@@ -371,13 +367,6 @@ function validateSettings(settings: unknown): ValidationEntry[] {
   if (s.costDisplayUnit && !VALID_COST_UNITS.includes(s.costDisplayUnit as CostDisplayUnit)) {
     result.push({
       message: `无效的费用展示单位：${s.costDisplayUnit}`,
-      severity: 'error',
-      source: 'settings',
-    });
-  }
-  if (s.theme && !VALID_THEME_MODES.includes(s.theme as ThemeMode)) {
-    result.push({
-      message: `无效的主题：${s.theme}`,
       severity: 'error',
       source: 'settings',
     });

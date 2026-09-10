@@ -270,15 +270,4 @@ function emojiBackground(): string {
   .item-card__arrow { display: none; }
 }
 
-/* ========= Dark Mode ========= */
-@media (prefers-color-scheme: dark) {
-  .item-card {
-    --card-bg: #1e1e2e;
-    --card-text: #e4e4ef;
-    --card-text-secondary: #9ca3af;
-    --card-border: #2a2a3e;
-    --card-accent: #818cf8;
-    --card-thumb-bg: #2a2a3e;
-  }
-}
 </style>

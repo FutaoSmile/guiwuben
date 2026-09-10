@@ -172,15 +172,4 @@ function handleClear(): void {
   }
 }
 
-/* ========= Dark Mode ========= */
-@media (prefers-color-scheme: dark) {
-  .search-bar {
-    --search-bg: #2a2a3e;
-    --search-text: #e4e4ef;
-    --search-placeholder: #6b7280;
-    --search-icon: #6b7280;
-    --search-active-border: #818cf8;
-    --search-active-bg: #1e1e2e;
-  }
-}
 </style>

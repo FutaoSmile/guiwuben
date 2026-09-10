@@ -690,15 +690,4 @@ function handleClose(): void {
   }
 }
 
-/* ========= Dark Mode ========= */
-@media (prefers-color-scheme: dark) {
-  .detail {
-    --detail-bg: #16171d;
-    --detail-text: #e4e4ef;
-    --detail-text-secondary: #9ca3af;
-    --detail-border: #2a2a3e;
-    --detail-accent: #818cf8;
-    --detail-section-bg: #1e1e2e;
-  }
-}
 </style>

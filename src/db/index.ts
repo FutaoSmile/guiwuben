@@ -49,7 +49,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   amountVisible: true,
   costDisplayUnit: 'day',
   defaultSort: 'createdAt-desc',
-  theme: 'system',
 };
 
 export async function initDB(): Promise<void> {
