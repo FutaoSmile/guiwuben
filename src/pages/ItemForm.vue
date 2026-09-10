@@ -32,6 +32,7 @@ const note = ref('');
 const cardColor = ref('');
 const iconKey = ref('');
 const showEmojiPicker = ref(false);
+const showOptionalDetails = ref(false);
 const emojiTrigger = ref<HTMLButtonElement | null>(null);
 const emojiCloseButton = ref<HTMLButtonElement | null>(null);
 
@@ -119,6 +120,7 @@ onMounted(async () => {
       note.value = existing.note || '';
       cardColor.value = existing.cardColor || '';
       iconKey.value = isItemEmoji(existing.iconKey) ? existing.iconKey! : '';
+      showOptionalDetails.value = Boolean(existing.brandModel || existing.note || iconKey.value);
     } else {
       router.replace('/');
     }
@@ -267,6 +269,10 @@ function selectEmoji(emoji: string) {
   iconKey.value = emoji;
   closeEmojiPicker();
 }
+
+function handleOptionalToggle(event: Event) {
+  showOptionalDetails.value = (event.currentTarget as HTMLDetailsElement).open;
+}
 </script>
 
 <template>
@@ -293,8 +299,7 @@ function selectEmoji(emoji: string) {
             @click="selectRecordType('asset')"
           >
             <strong>长期使用的物品</strong>
-            <span>电动车、手机、家具等</span>
-            <small>购入价 ÷ 从购买日至今天或报废日</small>
+            <span>电动车、手机等</span>
           </button>
           <button
             type="button"
@@ -305,8 +310,7 @@ function selectEmoji(emoji: string) {
             @click="selectRecordType('expense')"
           >
             <strong>固定周期的费用</strong>
-            <span>课程、话费、房租、保养等</span>
-            <small>支持周期总额、月费和年费</small>
+            <span>课程、房租等</span>
           </button>
         </div>
       </section>
@@ -332,38 +336,29 @@ function selectEmoji(emoji: string) {
           <p v-if="errors.name" id="name-error" class="field-error">{{ errors.name }}</p>
         </div>
 
-        <div v-if="!isExpense" class="form-group">
-          <label class="form-label" for="item-brand">品牌/型号</label>
-          <input
-            id="item-brand"
-            v-model="brandModel"
-            type="text"
-            class="form-input"
-            placeholder="可选"
-            maxlength="60"
-          />
-        </div>
-      </section>
-
-      <section class="form-section">
-        <h2 class="section-title">记录 Emoji</h2>
-        <div class="form-group">
-          <button
-            ref="emojiTrigger"
-            type="button"
-            class="emoji-trigger"
-            aria-haspopup="dialog"
-            @click="openEmojiPicker"
-          >
-            <span class="emoji-preview" aria-hidden="true">{{ iconKey || getDefaultItemEmoji(categoryId) }}</span>
-            <span class="emoji-trigger__text">
-              <strong>{{ iconKey ? '已选择记录 Emoji' : '使用分类默认 Emoji' }}</strong>
-              <small>点击更换</small>
-            </span>
-            <svg class="emoji-trigger__arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path d="m9 18 6-6-6-6" />
-            </svg>
-          </button>
+        <div class="form-group category-field">
+          <label class="form-label">分类 <span class="required">*</span></label>
+          <div class="category-grid" role="radiogroup" aria-label="选择分类">
+            <button
+              v-for="cat in categoriesStore.activeCategories"
+              :key="cat.id"
+              type="button"
+              class="category-btn"
+              :class="{ active: categoryId === cat.id }"
+              :style="{ '--category-color': cat.color, '--category-tint': cat.color + '16' }"
+              role="radio"
+              :aria-checked="categoryId === cat.id"
+              @click="categoryId = cat.id"
+            >
+              <span class="category-icon" aria-hidden="true">{{ getDefaultItemEmoji(cat.id) }}</span>
+              <span class="category-name">{{ cat.name }}</span>
+              <span v-if="categoryId === cat.id" class="category-check" aria-hidden="true">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m5 12 4 4L19 6" />
+                </svg>
+              </span>
+            </button>
+          </div>
         </div>
       </section>
 
@@ -435,6 +430,37 @@ function selectEmoji(emoji: string) {
             <p class="field-help">未设置报废日期时，使用天数会自动计算到今天</p>
             <p v-if="errors.purchaseDate" class="field-error">{{ errors.purchaseDate }}</p>
           </div>
+          <div class="form-group">
+            <label class="form-label">使用状态 <span class="required">*</span></label>
+            <div class="option-group">
+              <button
+                type="button"
+                class="option-btn"
+                :class="{ active: status === 'active' }"
+                @click="status = 'active'; endDate = ''"
+              >使用中</button>
+              <button
+                type="button"
+                class="option-btn"
+                :class="{ active: status === 'ended' }"
+                @click="status = 'ended'"
+              >已结束</button>
+            </div>
+          </div>
+          <div v-if="status === 'ended'" class="form-group">
+            <label class="form-label" for="item-end-date">
+              报废或停用日期 <span class="required">*</span>
+            </label>
+            <input
+              id="item-end-date"
+              v-model="endDate"
+              type="date"
+              class="form-input"
+              :min="purchaseDate"
+              :max="today()"
+            />
+            <p v-if="errors.endDate" class="field-error">{{ errors.endDate }}</p>
+          </div>
         </template>
 
         <template v-else>
@@ -454,11 +480,21 @@ function selectEmoji(emoji: string) {
               <p v-if="errors.startDate" class="field-error">{{ errors.startDate }}</p>
             </div>
             <div class="form-group half">
-              <label class="form-label" for="item-end-date">
-                周期结束日
-                <span v-if="isFixedPeriodExpense" class="required">*</span>
-                <span v-else class="optional">可选</span>
-              </label>
+              <div class="form-label-line">
+                <label class="form-label" for="item-end-date">
+                  周期结束日
+                  <span v-if="isFixedPeriodExpense" class="required">*</span>
+                  <span v-else class="optional">可选</span>
+                </label>
+                <button
+                  v-if="!isFixedPeriodExpense"
+                  type="button"
+                  class="ongoing-btn"
+                  :class="{ active: !endDate }"
+                  :aria-pressed="!endDate"
+                  @click="endDate = ''"
+                >持续中</button>
+              </div>
               <input id="item-end-date" v-model="endDate" type="date" class="form-input" :min="startDate" aria-describedby="end-date-help" />
               <div class="quick-date-ops" aria-label="周期结束日快捷选择">
                 <button
@@ -468,7 +504,6 @@ function selectEmoji(emoji: string) {
                   class="quick-date-btn"
                   @click="applyDateShortcut('end', shortcut.value)"
                 >{{ shortcut.label }}</button>
-                <button v-if="!isFixedPeriodExpense" type="button" class="quick-date-btn quick-date-btn--ongoing" @click="endDate = ''">持续中</button>
               </div>
               <p id="end-date-help" class="field-help">
                 {{ isFixedPeriodExpense ? '固定总额需要完整起止日期，才能计算日均成本' : '留空表示持续发生，累计支出自动计算到今天' }}
@@ -484,87 +519,43 @@ function selectEmoji(emoji: string) {
         </template>
       </section>
 
-      <!-- Category -->
-      <section class="form-section">
-        <h2 class="section-title">分类 <span class="required" aria-label="必填">*</span></h2>
-        <div class="form-group">
-          <div class="category-grid" role="radiogroup" aria-label="选择分类">
-            <button
-              v-for="cat in categoriesStore.activeCategories"
-              :key="cat.id"
-              type="button"
-              class="category-btn"
-              :class="{ active: categoryId === cat.id }"
-              :style="{ '--category-color': cat.color, '--category-tint': cat.color + '16' }"
-              role="radio"
-              :aria-checked="categoryId === cat.id"
-              @click="categoryId = cat.id"
-            >
-              <span class="category-icon" aria-hidden="true">{{ getDefaultItemEmoji(cat.id) }}</span>
-              <span class="category-name">{{ cat.name }}</span>
-              <span v-if="categoryId === cat.id" class="category-check" aria-hidden="true">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="m5 12 4 4L19 6" />
-                </svg>
+      <details class="form-section optional-section" :open="showOptionalDetails" @toggle="handleOptionalToggle">
+        <summary class="optional-summary">
+          <span>
+            <strong>更多信息</strong>
+            <small>{{ isExpense ? 'Emoji、备注' : '品牌/型号、Emoji、备注' }}</small>
+          </span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </summary>
+        <div class="optional-content">
+          <div v-if="!isExpense" class="form-group">
+            <label class="form-label" for="item-brand">品牌/型号</label>
+            <input id="item-brand" v-model="brandModel" type="text" class="form-input" placeholder="可选" maxlength="60" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">记录 Emoji</label>
+            <button ref="emojiTrigger" type="button" class="emoji-trigger" aria-haspopup="dialog" @click="openEmojiPicker">
+              <span class="emoji-preview" aria-hidden="true">{{ iconKey || getDefaultItemEmoji(categoryId) }}</span>
+              <span class="emoji-trigger__text">
+                <strong>{{ iconKey ? '已选择记录 Emoji' : '使用分类默认 Emoji' }}</strong>
+                <small>点击更换</small>
               </span>
+              <svg class="emoji-trigger__arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="m9 18 6-6-6-6" />
+              </svg>
             </button>
           </div>
-        </div>
-      </section>
 
-      <!-- Asset status -->
-      <section v-if="!isExpense" class="form-section">
-        <h2 class="section-title">使用状态</h2>
-        <div class="form-group">
-          <label class="form-label">状态 <span class="required">*</span></label>
-          <div class="option-group">
-            <button
-              type="button"
-              class="option-btn"
-              :class="{ active: status === 'active' }"
-              @click="status = 'active'; endDate = ''"
-            >使用中</button>
-            <button
-              type="button"
-              class="option-btn"
-              :class="{ active: status === 'ended' }"
-              @click="status = 'ended'"
-            >已结束</button>
+          <div class="form-group">
+            <label class="form-label" for="item-note">备注</label>
+            <textarea id="item-note" v-model="note" class="form-textarea" placeholder="可选备注信息" maxlength="500" rows="2" />
+            <span class="char-count">{{ note.length }}/500</span>
           </div>
         </div>
-
-        <div v-if="status === 'ended'" class="form-group">
-          <label class="form-label" for="item-end-date">
-            报废或停用日期 <span class="required">*</span>
-          </label>
-          <input
-            id="item-end-date"
-            v-model="endDate"
-            type="date"
-            class="form-input"
-            :min="purchaseDate"
-            :max="today()"
-          />
-          <p v-if="errors.endDate" class="field-error">{{ errors.endDate }}</p>
-        </div>
-      </section>
-
-      <!-- Notes -->
-      <section class="form-section">
-        <h2 class="section-title">备注</h2>
-        <div class="form-group">
-          <label class="form-label" for="item-note">备注</label>
-          <textarea
-            id="item-note"
-            v-model="note"
-            class="form-textarea"
-            placeholder="可选备注信息"
-            maxlength="500"
-            rows="3"
-          />
-          <span class="char-count">{{ note.length }}/500</span>
-        </div>
-      </section>
+      </details>
 
       <!-- Submit -->
       <div class="form-actions">
@@ -666,8 +657,8 @@ function selectEmoji(emoji: string) {
 }
 
 .record-type-card {
-  min-height: 132px;
-  padding: var(--spacing-md);
+  min-height: 82px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -680,9 +671,8 @@ function selectEmoji(emoji: string) {
   cursor: pointer;
 }
 
-.record-type-card strong { font-size: var(--font-size-md); }
+.record-type-card strong { font-size: var(--font-size-sm); }
 .record-type-card span { font-size: var(--font-size-sm); color: var(--color-text-secondary); }
-.record-type-card small { margin-top: auto; line-height: 1.4; color: var(--color-text-tertiary); }
 .record-type-card.active {
   border-color: var(--color-primary);
   background: var(--color-primary-bg);
@@ -817,7 +807,8 @@ function selectEmoji(emoji: string) {
 }
 
 .quick-date-btn {
-  flex: 1 1 56px;
+  flex: 1 1 0;
+  min-width: 0;
   font-size: var(--font-size-xs);
   padding: 8px 10px;
   border-radius: var(--radius-sm);
@@ -826,15 +817,40 @@ function selectEmoji(emoji: string) {
   border: 1px solid var(--color-border);
   cursor: pointer;
   transition: all 0.15s;
-  min-height: 44px;
+  min-height: 40px;
   line-height: 1;
   white-space: nowrap;
 }
 
-.quick-date-btn--ongoing {
+.ongoing-btn {
+  min-height: 32px;
+  padding: 5px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ongoing-btn.active {
   color: var(--color-primary);
   border-color: var(--color-primary-light);
   background: var(--color-primary-bg);
+}
+
+.form-label-line {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+}
+
+.form-label-line .form-label {
+  margin-bottom: 0;
 }
 
 .quick-date-btn:focus-visible {
@@ -938,10 +954,10 @@ function selectEmoji(emoji: string) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 4px;
   min-width: 0;
-  min-height: 80px;
-  padding: 10px 5px 9px;
+  min-height: 60px;
+  padding: 6px 3px;
   border: 1.5px solid transparent;
   border-radius: var(--radius-lg);
   background: var(--color-surface-secondary);
@@ -969,13 +985,13 @@ function selectEmoji(emoji: string) {
 }
 
 .category-icon {
-  width: 34px;
-  height: 34px;
+  width: 26px;
+  height: 26px;
   display: grid;
   place-items: center;
-  border-radius: 11px;
+  border-radius: 8px;
   background: var(--category-tint);
-  font-size: 20px;
+  font-size: 17px;
   line-height: 1;
 }
 
@@ -990,8 +1006,8 @@ function selectEmoji(emoji: string) {
   position: absolute;
   top: 6px;
   right: 6px;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   display: grid;
   place-items: center;
   border: 2px solid var(--color-surface);
@@ -1002,7 +1018,7 @@ function selectEmoji(emoji: string) {
 
 .emoji-trigger {
   width: 100%;
-  min-height: 68px;
+  min-height: 56px;
   display: flex;
   align-items: center;
   text-align: left;
@@ -1016,14 +1032,14 @@ function selectEmoji(emoji: string) {
 }
 
 .emoji-preview {
-  flex: 0 0 44px;
-  width: 44px;
-  height: 44px;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
   border-radius: var(--radius-md);
   background: var(--color-primary-bg);
-  font-size: 26px;
+  font-size: 22px;
   line-height: 1;
 }
 
@@ -1138,9 +1154,60 @@ function selectEmoji(emoji: string) {
   background: var(--color-surface-secondary);
 }
 
+.optional-section {
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.optional-summary {
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: 12px 16px;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  list-style: none;
+}
+
+.optional-summary::-webkit-details-marker {
+  display: none;
+}
+
+.optional-summary > span {
+  display: grid;
+  gap: 2px;
+}
+
+.optional-summary strong {
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+}
+
+.optional-summary small {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+}
+
+.optional-summary svg {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  transition: transform 0.18s ease;
+}
+
+.optional-section[open] .optional-summary svg {
+  transform: rotate(180deg);
+}
+
+.optional-content {
+  padding: 16px;
+  border-top: 1px solid var(--color-border-light);
+}
+
 /* Submit */
 .form-actions {
-  margin-top: var(--spacing-2xl);
+  margin-top: 18px;
 }
 
 .submit-btn {
@@ -1161,7 +1228,6 @@ function selectEmoji(emoji: string) {
 }
 
 @media (max-width: 420px) {
-  .record-type-grid,
   .form-row {
     grid-template-columns: 1fr;
     flex-direction: column;
@@ -1205,15 +1271,17 @@ function selectEmoji(emoji: string) {
 .page-header { padding: 0 4px; margin-bottom: 20px; }
 .page-title { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
 .form-section {
-  margin-bottom: 14px;
-  padding: 20px;
+  margin-bottom: 10px;
+  padding: 16px;
   border: 1px solid rgba(255, 255, 255, 0.92);
   border-radius: var(--radius-xl);
   background: rgba(255, 255, 255, 0.82);
   box-shadow: var(--shadow-sm);
   backdrop-filter: blur(14px);
 }
-.section-title { color: var(--color-primary); font-weight: 750; }
+.section-title { margin-bottom: 10px; color: var(--color-primary); font-weight: 750; }
+.form-group { margin-bottom: 14px; }
+.form-group:last-child { margin-bottom: 0; }
 .record-type-card,
 .option-btn,
 .category-btn,
