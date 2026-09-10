@@ -486,21 +486,27 @@ function selectEmoji(emoji: string) {
 
       <!-- Category -->
       <section class="form-section">
-        <h2 class="section-title">分类</h2>
+        <h2 class="section-title">分类 <span class="required" aria-label="必填">*</span></h2>
         <div class="form-group">
-          <label class="form-label">分类 <span class="required">*</span></label>
-          <div class="category-grid">
+          <div class="category-grid" role="radiogroup" aria-label="选择分类">
             <button
               v-for="cat in categoriesStore.activeCategories"
               :key="cat.id"
               type="button"
               class="category-btn"
               :class="{ active: categoryId === cat.id }"
-              :style="categoryId === cat.id ? { borderColor: cat.color, background: cat.color + '15' } : {}"
+              :style="{ '--category-color': cat.color, '--category-tint': cat.color + '16' }"
+              role="radio"
+              :aria-checked="categoryId === cat.id"
               @click="categoryId = cat.id"
             >
-              <span class="cat-dot" :style="{ background: cat.color }" />
-              {{ cat.name }}
+              <span class="category-icon" aria-hidden="true">{{ getDefaultItemEmoji(cat.id) }}</span>
+              <span class="category-name">{{ cat.name }}</span>
+              <span v-if="categoryId === cat.id" class="category-check" aria-hidden="true">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m5 12 4 4L19 6" />
+                </svg>
+              </span>
             </button>
           </div>
         </div>
@@ -922,35 +928,76 @@ function selectEmoji(emoji: string) {
 /* Category grid */
 .category-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-  gap: var(--spacing-sm);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .category-btn {
+  position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-sm) var(--spacing-md);
-  border: 1.5px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+  min-height: 80px;
+  padding: 10px 5px 9px;
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-secondary);
   color: var(--color-text-secondary);
   font-size: var(--font-size-xs);
-  transition: all 0.2s;
-  min-height: 44px;
-  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease, transform 0.12s ease;
 }
 
 .category-btn.active {
   border-color: var(--color-primary);
-  font-weight: 500;
+  background: var(--color-primary-light);
+  box-shadow: 0 5px 16px rgb(91 78 245 / 14%);
+  color: var(--color-text-primary);
+  font-weight: 600;
 }
 
-.cat-dot {
-  width: 8px;
-  height: 8px;
+.category-btn:active {
+  transform: scale(0.97);
+}
+
+.category-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.category-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: var(--category-tint);
+  font-size: 20px;
+  line-height: 1;
+}
+
+.category-name {
+  max-width: 100%;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.category-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--color-surface);
   border-radius: 50%;
-  flex-shrink: 0;
+  background: var(--color-primary);
+  color: #ffffff;
 }
 
 .emoji-trigger {
@@ -1122,6 +1169,12 @@ function selectEmoji(emoji: string) {
 
   .emoji-grid {
     grid-template-columns: repeat(5, minmax(44px, 1fr));
+  }
+}
+
+@media (max-width: 360px) {
+  .category-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
