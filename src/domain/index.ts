@@ -71,19 +71,18 @@ export function calcItemDays(item: Pick<Item,
 /**
  * 一条记录的日均成本。
  * 长期物品：购入价 ÷ 购买日至今天（或报废日）的自然日数。
- * 周期费用：本周期总金额 ÷ 周期开始日至结束日的自然日数。
+ * 周期费用：月度金额按 × 12 ÷ 365 折算，年度金额按 ÷ 365 折算。
  */
 export function calcItemDailyCost(item: Pick<Item,
   'recordType' | 'billingType' | 'billingAmountInCents' | 'purchaseDate' | 'startDate' | 'status' | 'endDate'
 >): number {
-  const amount = item.billingAmountInCents / 100;
-  if (item.recordType === 'expense' && item.endDate) {
-    return amount / calcPeriodDays(item.startDate, item.endDate);
+  if (item.recordType === 'expense') {
+    return calcDailyCost(item.billingType, item.billingAmountInCents, 1);
   }
   if (!item.recordType && item.billingType !== 'one_time') {
     return calcDailyCost(item.billingType, item.billingAmountInCents, 1);
   }
-  return amount / calcItemDays(item);
+  return (item.billingAmountInCents / 100) / calcItemDays(item);
 }
 
 export function calcItemMonthlyCost(item: Pick<Item,
@@ -120,8 +119,7 @@ export function calcItemDailyCostOnDate(item: Item, date: string): number {
   if (date < start || (item.endDate && date > item.endDate)) return 0;
 
   if (type === 'expense') {
-    if (item.recordType === 'expense' && item.endDate) return calcItemDailyCost(item);
-    return calcDailyCost(item.billingType, item.billingAmountInCents, 1);
+    return calcItemDailyCost(item);
   }
 
   return (item.billingAmountInCents / 100) / calcPeriodDays(item.purchaseDate, date);
@@ -196,6 +194,28 @@ export function calcMonthlyCost(billingType: BillingType, billingAmountInCents: 
     case 'yearly':
       return amount / 12;
   }
+}
+
+/** 根据月度/年度金额，计算指定起止周期内的预计支出（分）。 */
+export function calcExpensePeriodTotalInCents(
+  billingType: BillingType,
+  billingAmountInCents: number,
+  startDate: string,
+  endDate: string
+): number {
+  const dailyCost = calcDailyCost(billingType, billingAmountInCents, 1);
+  return Math.round(dailyCost * calcPeriodDays(startDate, endDate) * 100);
+}
+
+/** 将旧版“整个周期总金额”换算为新版的每月/每年金额，保持原日均成本。 */
+export function convertLegacyExpenseAmountInCents(
+  billingType: BillingType,
+  periodTotalInCents: number,
+  startDate: string,
+  endDate: string
+): number {
+  const annualizedAmount = periodTotalInCents * 365 / calcPeriodDays(startDate, endDate);
+  return Math.round(billingType === 'monthly' ? annualizedAmount / 12 : annualizedAmount);
 }
 
 /**
@@ -406,10 +426,17 @@ export function calcTotalInvestment(item: {
   billingAmountInCents: number;
   status: 'active' | 'ended';
   endDate?: string;
+  startDate?: string;
   firstPaymentDate?: string;
 }): number {
   if (item.recordType === 'expense') {
-    return item.billingAmountInCents;
+    if (!item.startDate || !item.endDate) return item.billingAmountInCents;
+    return calcExpensePeriodTotalInCents(
+      item.billingType,
+      item.billingAmountInCents,
+      item.startDate,
+      item.endDate
+    );
   }
   if (item.billingType === 'one_time') {
     return item.billingAmountInCents;

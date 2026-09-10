@@ -1,7 +1,11 @@
 import Dexie, { type Table } from 'dexie';
 import type { Item, Category, AppSettings } from '../types';
+import { convertLegacyExpenseAmountInCents } from '../domain';
 
-const CURRENT_SCHEMA_VERSION = 1;
+const STORE_SCHEMA = {
+  items: 'id, categoryId, status, billingType, purchaseDate, startDate, createdAt',
+  categories: 'id, sortOrder, isSystem, isActive',
+};
 
 export class GuiWuBenDB extends Dexie {
   items!: Table<Item, string>;
@@ -9,9 +13,17 @@ export class GuiWuBenDB extends Dexie {
 
   constructor() {
     super('GuiWuBenDB');
-    this.version(CURRENT_SCHEMA_VERSION).stores({
-      items: 'id, categoryId, status, billingType, purchaseDate, startDate, createdAt',
-      categories: 'id, sortOrder, isSystem, isActive',
+    this.version(1).stores(STORE_SCHEMA);
+    this.version(2).stores(STORE_SCHEMA).upgrade(async transaction => {
+      await transaction.table<Item, string>('items').toCollection().modify(item => {
+        if (item.recordType !== 'expense' || !item.endDate || item.billingType === 'one_time') return;
+        item.billingAmountInCents = convertLegacyExpenseAmountInCents(
+          item.billingType,
+          item.billingAmountInCents,
+          item.startDate,
+          item.endDate
+        );
+      });
     });
   }
 }

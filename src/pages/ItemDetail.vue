@@ -133,7 +133,7 @@ async function confirmDelete() {
             <span class="cost-item-unit">天</span>
           </div>
           <div class="cost-item">
-            <span class="cost-item-label">{{ isExpense ? '本周期费用' : '购入金额' }}</span>
+            <span class="cost-item-label">{{ isExpense ? '周期预计支出' : '购入金额' }}</span>
             <span class="cost-item-value" v-if="settingsStore.amountVisible">¥{{ formatAmount(totalInvestment) }}</span>
             <span class="cost-item-value blurred" v-else>¥••••••</span>
           </div>
@@ -149,7 +149,7 @@ async function confirmDelete() {
           </span>
         </div>
         <div class="field-row">
-          <span class="field-label">{{ isExpense ? '本周期总金额' : '购入金额' }}</span>
+          <span class="field-label">{{ isExpense ? (item.billingType === 'monthly' ? '每月金额' : '每年金额') : '购入金额' }}</span>
           <span class="field-value" v-if="settingsStore.amountVisible">
             ¥{{ formatAmount(item.billingAmountInCents) }}
           </span>

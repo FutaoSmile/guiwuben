@@ -41,8 +41,8 @@ function currentCostLabel(): string {
 function billingLabel(): string {
   switch (props.item.billingType) {
     case 'one_time': return `购入 ¥${formatCost(props.item.billingAmountInCents / 100)}`;
-    case 'monthly': return `月度费用 ¥${formatCost(props.item.billingAmountInCents / 100)}`;
-    case 'yearly': return `年度费用 ¥${formatCost(props.item.billingAmountInCents / 100)}`;
+    case 'monthly': return `每月 ¥${formatCost(props.item.billingAmountInCents / 100)}`;
+    case 'yearly': return `每年 ¥${formatCost(props.item.billingAmountInCents / 100)}`;
     default: return '';
   }
 }

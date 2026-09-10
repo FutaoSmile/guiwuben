@@ -5,7 +5,7 @@ import { useItemsStore } from '../stores/items';
 import { useCategoriesStore } from '../stores/categories';
 import type { BillingType, ItemStatus, RecordType } from '../types';
 import { isValidDate, isNotFutureDate } from '../utils';
-import { calcItemDailyCost, calcPeriodDays, formatCost, resolveRecordType, today } from '../domain';
+import { calcExpensePeriodTotalInCents, calcItemDailyCost, calcPeriodDays, formatAmount, formatCost, resolveRecordType, today } from '../domain';
 import { ITEM_EMOJIS, getDefaultItemEmoji, isItemEmoji } from '../utils/itemEmoji';
 
 const route = useRoute();
@@ -47,6 +47,10 @@ interface FieldErrors {
 const errors = ref<FieldErrors>({});
 
 const isExpense = computed(() => recordType.value === 'expense');
+const expenseAmountLabel = computed(() => billingType.value === 'monthly' ? '每月金额' : '每年金额');
+const expenseAmountHelp = computed(() => billingType.value === 'monthly'
+  ? '填写每个月需要支付的金额，系统按 × 12 ÷ 365 折算日均'
+  : '填写每年需要支付的金额，系统按 ÷ 365 折算日均');
 const periodDays = computed(() => {
   if (!isExpense.value || !isValidDate(startDate.value) || !isValidDate(endDate.value) || endDate.value < startDate.value) return 0;
   return calcPeriodDays(startDate.value, endDate.value);
@@ -63,6 +67,15 @@ const previewDailyCost = computed(() => {
     status: isExpense.value ? 'ended' : status.value,
     endDate: endDate.value || undefined,
   });
+});
+const previewPeriodTotal = computed(() => {
+  if (!isExpense.value || billingAmountYuan.value === null || periodDays.value === 0) return null;
+  return calcExpensePeriodTotalInCents(
+    billingType.value,
+    Math.round(billingAmountYuan.value * 100),
+    startDate.value,
+    endDate.value
+  );
 });
 
 // Load existing item if editing
@@ -266,7 +279,7 @@ function selectEmoji(emoji: string) {
           >
             <strong>固定周期的费用</strong>
             <span>话费、房租、保养等</span>
-            <small>本周期金额 ÷ 周期实际天数</small>
+            <small>每月/每年金额折算为固定日均</small>
           </button>
         </div>
       </section>
@@ -353,7 +366,7 @@ function selectEmoji(emoji: string) {
 
         <div class="form-group">
           <label class="form-label" for="item-amount">
-            {{ isExpense ? '本周期总金额' : '购入金额' }}（元） <span class="required">*</span>
+            {{ isExpense ? expenseAmountLabel : '购入金额' }}（元） <span class="required">*</span>
           </label>
           <div class="amount-input-wrapper">
             <span class="amount-prefix">¥</span>
@@ -370,7 +383,7 @@ function selectEmoji(emoji: string) {
               :aria-invalid="!!errors.billingAmountYuan"
             />
           </div>
-          <p class="field-help">{{ isExpense ? '填写这一段开始至结束日期内的总费用' : '日均成本会随着使用天数增加而下降' }}</p>
+          <p class="field-help">{{ isExpense ? expenseAmountHelp : '日均成本会随着使用天数增加而下降' }}</p>
           <p v-if="errors.billingAmountYuan" class="field-error">{{ errors.billingAmountYuan }}</p>
         </div>
 
@@ -405,9 +418,9 @@ function selectEmoji(emoji: string) {
             </div>
           </div>
           <div v-if="previewDailyCost !== null" class="cost-preview" aria-live="polite">
-            <span>系统将按 {{ periodDays }} 个自然日计算</span>
+            <span>{{ billingType === 'monthly' ? '月费' : '年费' }}折算 · 周期 {{ periodDays }} 天</span>
             <strong>日均 ¥{{ formatCost(previewDailyCost) }}</strong>
-            <small>包含开始日与结束日，保存后数值固定</small>
+            <small v-if="previewPeriodTotal !== null">本周期预计支出 ¥{{ formatAmount(previewPeriodTotal) }}，包含开始日与结束日</small>
           </div>
         </template>
       </section>

@@ -25,7 +25,7 @@ import { useSettingsStore } from '../stores/settings';
 // ---------------------------------------------------------------------------
 
 /** 当前支持的最新备份 schema 版本 */
-const CURRENT_SCHEMA_VERSION = 1;
+const CURRENT_SCHEMA_VERSION = 2;
 
 /** 导入文件大小上限：20 MB */
 const MAX_FILE_SIZE = 20 * 1024 * 1024;

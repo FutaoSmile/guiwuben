@@ -6,6 +6,7 @@ import { useItemsStore } from '../stores/items';
 import { useCategoriesStore } from '../stores/categories';
 import { db } from '../db';
 import type { BackupFile, BackupImage } from '../types';
+import { convertLegacyExpenseAmountInCents } from '../domain';
 
 const router = useRouter();
 const settings = useSettingsStore();
@@ -40,7 +41,7 @@ async function handleExport() {
     const images: BackupImage[] = [];
 
     const backup: BackupFile = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       exportedAt: new Date().toISOString(),
       appVersion: '1.0.0',
       settings: settings.settings,
@@ -90,9 +91,9 @@ async function handleImportFile(event: Event) {
     const data = JSON.parse(text) as BackupFile;
 
     // Validate schemaVersion
-    if (!data.schemaVersion || data.schemaVersion !== 1) {
+    if (!data.schemaVersion || ![1, 2].includes(data.schemaVersion)) {
       importStatus.value = 'error';
-      importError.value = `不支持的版本 (schemaVersion: ${data.schemaVersion})，仅支持版本 1`;
+      importError.value = `不支持的版本 (schemaVersion: ${data.schemaVersion})，支持版本 1–2`;
       return;
     }
 
@@ -108,6 +109,22 @@ async function handleImportFile(event: Event) {
       if (!item.name) errors.push('存在缺少名称的物品');
       if (!item.billingType) errors.push(`物品 "${item.name || '未知'}" 缺少计费方式`);
       if (typeof item.billingAmountInCents !== 'number') errors.push(`物品 "${item.name || '未知'}" 金额格式错误`);
+    }
+
+    if (data.schemaVersion === 1 && Array.isArray(data.items)) {
+      data.items = data.items.map(item => {
+        if (item.recordType !== 'expense' || !item.endDate || item.billingType === 'one_time') return item;
+        return {
+          ...item,
+          billingAmountInCents: convertLegacyExpenseAmountInCents(
+            item.billingType,
+            item.billingAmountInCents,
+            item.startDate,
+            item.endDate
+          ),
+        };
+      });
+      data.schemaVersion = 2;
     }
 
     importPreview.value = {

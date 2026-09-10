@@ -11,6 +11,8 @@ import {
   calcItemDailyCost,
   calcPeriodDays,
   calcItemDailyCostOnDate,
+  calcExpensePeriodTotalInCents,
+  convertLegacyExpenseAmountInCents,
   buildCostTrend,
   formatAmount,
   formatCost,
@@ -106,13 +108,28 @@ describe('真实场景日均成本', () => {
     expect(daily).toBeCloseTo(333.3333, 2);
   });
 
-  it('周期费用按包含首尾日的固定周期计算', () => {
+  it('月度费用按每月金额折算为固定日均', () => {
     const daily = calcItemDailyCost({
-      recordType: 'expense', billingType: 'monthly', billingAmountInCents: 300000,
-      purchaseDate: '2026-09-01', startDate: '2026-09-01', status: 'active', endDate: '2026-09-30',
+      recordType: 'expense', billingType: 'monthly', billingAmountInCents: 1000,
+      purchaseDate: '2026-01-01', startDate: '2026-01-01', status: 'active', endDate: '2026-12-31',
     });
-    expect(calcPeriodDays('2026-09-01', '2026-09-30')).toBe(30);
-    expect(daily).toBe(100);
+    expect(daily).toBeCloseTo(10 * 12 / 365, 6);
+    expect(calcExpensePeriodTotalInCents('monthly', 1000, '2026-01-01', '2026-12-31')).toBe(12000);
+  });
+
+  it('年度费用按每年金额折算为固定日均', () => {
+    const daily = calcItemDailyCost({
+      recordType: 'expense', billingType: 'yearly', billingAmountInCents: 120000,
+      purchaseDate: '2026-01-01', startDate: '2026-01-01', status: 'active', endDate: '2026-12-31',
+    });
+    expect(daily).toBeCloseTo(1200 / 365, 6);
+    expect(calcExpensePeriodTotalInCents('yearly', 120000, '2026-01-01', '2026-12-31')).toBe(120000);
+  });
+
+  it('旧版周期总金额可换算且保持原日均成本', () => {
+    const converted = convertLegacyExpenseAmountInCents('monthly', 300000, '2026-09-01', '2026-09-30');
+    expect(converted).toBe(304167);
+    expect(calcDailyCost('monthly', converted, 1)).toBeCloseTo(3000 / 30, 2);
   });
 });
 
@@ -133,7 +150,7 @@ describe('成本趋势', () => {
   it('按指定日期计算物品递减成本与周期固定成本', () => {
     expect(calcItemDailyCostOnDate(asset, '2026-09-01')).toBe(3000);
     expect(calcItemDailyCostOnDate(asset, '2026-09-10')).toBe(300);
-    expect(calcItemDailyCostOnDate(expense, '2026-09-10')).toBe(100);
+    expect(calcItemDailyCostOnDate(expense, '2026-09-10')).toBeCloseTo(3000 * 12 / 365, 6);
     expect(calcItemDailyCostOnDate(expense, '2026-10-01')).toBe(0);
   });
 
@@ -141,7 +158,7 @@ describe('成本趋势', () => {
     const daily = buildCostTrend([asset, expense], 'daily', '2026-09-10');
     expect(daily).toHaveLength(30);
     expect(daily.at(-1)?.date).toBe('2026-09-10');
-    expect(daily.at(-1)?.value).toBe(400);
+    expect(daily.at(-1)?.value).toBeCloseTo(300 + 3000 * 12 / 365, 6);
 
     const monthly = buildCostTrend([asset, expense], 'monthly', '2026-09-10');
     expect(monthly).toHaveLength(12);
@@ -403,6 +420,18 @@ describe('calcTotalInvestment', () => {
   it('一次性物品总投入 = 购入金额', () => {
     const inv = calcTotalInvestment({ billingType: 'one_time', billingAmountInCents: 450000, status: 'active' });
     expect(inv).toBe(450000);
+  });
+
+  it('月度费用按起止周期计算预计支出', () => {
+    const inv = calcTotalInvestment({
+      recordType: 'expense',
+      billingType: 'monthly',
+      billingAmountInCents: 1000,
+      status: 'active',
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
+    });
+    expect(inv).toBe(12000);
   });
 
   it('月付物品总投入 = 金额 × 已付周期', () => {
