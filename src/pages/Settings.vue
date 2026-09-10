@@ -362,7 +362,8 @@ async function confirmClearData() {
         <div class="setting-item info-item">
           <p class="info-text">
             归物本是一款纯本地物品资产与使用成本管理工具。
-            所有数据保存在当前浏览器中，清除浏览器数据或卸载浏览器可能导致数据丢失，建议定期导出备份。
+            所有数据仅保存在当前浏览器的 IndexedDB 中，不会上传到任何服务器，也不会在设备之间自动同步。
+            清除浏览器数据或卸载浏览器可能导致数据丢失，建议定期导出备份。
           </p>
         </div>
       </section>

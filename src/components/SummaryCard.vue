@@ -136,6 +136,19 @@ function investmentLabel(): string {
         </div>
       </div>
     </template>
+
+    <div class="summary-card__privacy" role="note" aria-label="数据隐私说明">
+      <span class="summary-card__privacy-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+          <path d="m9 12 2 2 4-4" />
+        </svg>
+      </span>
+      <span class="summary-card__privacy-copy">
+        <strong>数据仅保存在当前浏览器</strong>
+        <small>不会上传服务器，请定期导出备份</small>
+      </span>
+    </div>
   </section>
 </template>
 
@@ -201,6 +214,44 @@ function investmentLabel(): string {
 .summary-card__add-btn:active {
   opacity: 0.85;
   transform: scale(0.97);
+}
+
+.summary-card__privacy {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 13px;
+  border-top: 1px solid var(--card-border);
+}
+
+.summary-card__privacy-icon {
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.summary-card__privacy-copy {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+  line-height: 1.4;
+}
+
+.summary-card__privacy-copy strong {
+  color: var(--card-text);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.summary-card__privacy-copy small {
+  color: var(--card-text-secondary);
+  font-size: 11px;
 }
 
 /* ========= Normal State ========= */
