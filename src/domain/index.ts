@@ -93,6 +93,10 @@ export function calcItemDailyCost(item: Pick<Item,
   'recordType' | 'billingType' | 'billingAmountInCents' | 'purchaseDate' | 'startDate' | 'status' | 'endDate'
 >): number {
   if (item.recordType === 'expense') {
+    if (item.billingType === 'one_time') {
+      if (!item.endDate) return 0;
+      return (item.billingAmountInCents / 100) / calcPeriodDays(item.startDate, item.endDate);
+    }
     return calcDailyCost(item.billingType, item.billingAmountInCents, 1);
   }
   if (!item.recordType && item.billingType !== 'one_time') {
@@ -219,6 +223,7 @@ export function calcExpensePeriodTotalInCents(
   startDate: string,
   endDate: string
 ): number {
+  if (billingType === 'one_time') return billingAmountInCents;
   const dailyCost = calcDailyCost(billingType, billingAmountInCents, 1);
   return Math.round(dailyCost * calcPeriodDays(startDate, endDate) * 100);
 }
@@ -230,6 +235,7 @@ export function convertLegacyExpenseAmountInCents(
   startDate: string,
   endDate: string
 ): number {
+  if (billingType === 'one_time') return periodTotalInCents;
   const annualizedAmount = periodTotalInCents * 365 / calcPeriodDays(startDate, endDate);
   return Math.round(billingType === 'monthly' ? annualizedAmount / 12 : annualizedAmount);
 }

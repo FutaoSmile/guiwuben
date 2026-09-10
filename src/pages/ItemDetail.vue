@@ -37,6 +37,16 @@ const category = computed(() => {
 
 const recordType = computed(() => item.value ? resolveRecordType(item.value) : 'asset');
 const isExpense = computed(() => recordType.value === 'expense');
+const recordTypeLabel = computed(() => {
+  if (!item.value || !isExpense.value) return '长期使用的物品';
+  if (item.value.billingType === 'one_time') return '固定周期总额';
+  return item.value.billingType === 'monthly' ? '月度费用' : '年度费用';
+});
+const amountLabel = computed(() => {
+  if (!item.value || !isExpense.value) return '购入金额';
+  if (item.value.billingType === 'one_time') return '周期总金额';
+  return item.value.billingType === 'monthly' ? '每月金额' : '每年金额';
+});
 
 const holdingDays = computed(() => {
   if (!item.value) return 0;
@@ -145,11 +155,11 @@ async function confirmDelete() {
         <div class="field-row">
           <span class="field-label">记录类型</span>
           <span class="field-value">
-            {{ isExpense ? (item.billingType === 'monthly' ? '月度费用' : '年度费用') : '长期使用的物品' }}
+            {{ recordTypeLabel }}
           </span>
         </div>
         <div class="field-row">
-          <span class="field-label">{{ isExpense ? (item.billingType === 'monthly' ? '每月金额' : '每年金额') : '购入金额' }}</span>
+          <span class="field-label">{{ amountLabel }}</span>
           <span class="field-value" v-if="settingsStore.amountVisible">
             ¥{{ formatAmount(item.billingAmountInCents) }}
           </span>

@@ -53,12 +53,24 @@ const dateShortcuts: { label: string; value: DateShortcut }[] = [
 ];
 
 const isExpense = computed(() => recordType.value === 'expense');
+const isFixedPeriodExpense = computed(() => isExpense.value && billingType.value === 'one_time');
 const effectivePeriodEnd = computed(() => endDate.value || today());
-const expenseAmountLabel = computed(() => billingType.value === 'monthly' ? '每月金额' : '每年金额');
-const expenseAmountHelp = computed(() => billingType.value === 'monthly'
-  ? '填写每个月需要支付的金额，系统按 × 12 ÷ 365 折算日均'
-  : '填写每年需要支付的金额，系统按 ÷ 365 折算日均');
+const expenseAmountLabel = computed(() => {
+  if (billingType.value === 'one_time') return '周期总金额';
+  return billingType.value === 'monthly' ? '每月金额' : '每年金额';
+});
+const expenseAmountHelp = computed(() => {
+  if (billingType.value === 'one_time') return '填写整个固定周期需要支付的总金额，系统按实际天数均摊';
+  return billingType.value === 'monthly'
+    ? '填写每个月需要支付的金额，系统按 × 12 ÷ 365 折算日均'
+    : '填写每年需要支付的金额，系统按 ÷ 365 折算日均';
+});
+const expenseTypeLabel = computed(() => {
+  if (billingType.value === 'one_time') return '固定总额';
+  return billingType.value === 'monthly' ? '月费折算' : '年费折算';
+});
 const periodDays = computed(() => {
+  if (isFixedPeriodExpense.value && !endDate.value) return 0;
   if (!isExpense.value || !isValidDate(startDate.value) || !isValidDate(effectivePeriodEnd.value) || effectivePeriodEnd.value < startDate.value) return 0;
   return calcPeriodDays(startDate.value, effectivePeriodEnd.value);
 });
@@ -143,7 +155,9 @@ function validate(): boolean {
 
   if (isExpense.value) {
     if (!startDate.value || !isValidDate(startDate.value)) newErrors.startDate = '请选择周期开始日';
-    if (endDate.value && !isValidDate(endDate.value)) {
+    if (isFixedPeriodExpense.value && !endDate.value) {
+      newErrors.endDate = '固定总额费用需要设置周期结束日';
+    } else if (endDate.value && !isValidDate(endDate.value)) {
       newErrors.endDate = '请输入有效的周期结束日';
     } else if (endDate.value && startDate.value && endDate.value < startDate.value) {
       newErrors.endDate = '周期结束日不得早于开始日';
@@ -291,8 +305,8 @@ function selectEmoji(emoji: string) {
             @click="selectRecordType('expense')"
           >
             <strong>固定周期的费用</strong>
-            <span>话费、房租、保养等</span>
-            <small>每月/每年金额折算为固定日均</small>
+            <span>课程、话费、房租、保养等</span>
+            <small>支持周期总额、月费和年费</small>
           </button>
         </div>
       </section>
@@ -365,6 +379,12 @@ function selectEmoji(emoji: string) {
             <button
               type="button"
               class="option-btn"
+              :class="{ active: billingType === 'one_time' }"
+              @click="billingType = 'one_time'"
+            >固定总额</button>
+            <button
+              type="button"
+              class="option-btn"
               :class="{ active: billingType === 'monthly' }"
               @click="billingType = 'monthly'"
             >月度费用</button>
@@ -434,7 +454,11 @@ function selectEmoji(emoji: string) {
               <p v-if="errors.startDate" class="field-error">{{ errors.startDate }}</p>
             </div>
             <div class="form-group half">
-              <label class="form-label" for="item-end-date">周期结束日 <span class="optional">可选</span></label>
+              <label class="form-label" for="item-end-date">
+                周期结束日
+                <span v-if="isFixedPeriodExpense" class="required">*</span>
+                <span v-else class="optional">可选</span>
+              </label>
               <input id="item-end-date" v-model="endDate" type="date" class="form-input" :min="startDate" aria-describedby="end-date-help" />
               <div class="quick-date-ops" aria-label="周期结束日快捷选择">
                 <button
@@ -444,14 +468,16 @@ function selectEmoji(emoji: string) {
                   class="quick-date-btn"
                   @click="applyDateShortcut('end', shortcut.value)"
                 >{{ shortcut.label }}</button>
-                <button type="button" class="quick-date-btn quick-date-btn--ongoing" @click="endDate = ''">持续中</button>
+                <button v-if="!isFixedPeriodExpense" type="button" class="quick-date-btn quick-date-btn--ongoing" @click="endDate = ''">持续中</button>
               </div>
-              <p id="end-date-help" class="field-help">留空表示持续发生，累计支出自动计算到今天</p>
+              <p id="end-date-help" class="field-help">
+                {{ isFixedPeriodExpense ? '固定总额需要完整起止日期，才能计算日均成本' : '留空表示持续发生，累计支出自动计算到今天' }}
+              </p>
               <p v-if="errors.endDate" class="field-error">{{ errors.endDate }}</p>
             </div>
           </div>
           <div v-if="previewDailyCost !== null" class="cost-preview" aria-live="polite">
-            <span>{{ billingType === 'monthly' ? '月费' : '年费' }}折算 · {{ endDate ? `周期 ${periodDays} 天` : `持续中，已计算 ${periodDays} 天` }}</span>
+            <span>{{ expenseTypeLabel }} · {{ endDate ? `周期 ${periodDays} 天` : `持续中，已计算 ${periodDays} 天` }}</span>
             <strong>日均 ¥{{ formatCost(previewDailyCost) }}</strong>
             <small v-if="previewPeriodTotal !== null">{{ endDate ? '本周期预计支出' : '截至今天折算支出' }} ¥{{ formatAmount(previewPeriodTotal) }}，包含开始日与计算截止日</small>
           </div>

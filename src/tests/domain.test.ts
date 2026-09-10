@@ -135,6 +135,22 @@ describe('真实场景日均成本', () => {
     expect(calcExpensePeriodTotalInCents('yearly', 120000, '2026-01-01', '2026-12-31')).toBe(120000);
   });
 
+  it('固定周期课程按总金额和实际天数均摊', () => {
+    const course = {
+      id: 'course-1', name: '春季培训班', recordType: 'expense' as const, billingType: 'one_time' as const,
+      billingAmountInCents: 300000, purchaseDate: '2026-01-01', startDate: '2026-01-01',
+      endDate: '2026-03-31', categoryId: 'cat-other', warrantyType: 'unset' as const,
+      status: 'ended' as const, createdAt: '', updatedAt: '',
+    };
+    expect(calcPeriodDays(course.startDate, course.endDate)).toBe(90);
+    expect(calcItemDailyCost(course)).toBeCloseTo(3000 / 90, 6);
+    expect(calcExpensePeriodTotalInCents('one_time', 300000, course.startDate, course.endDate)).toBe(300000);
+    expect(calcTotalInvestment(course)).toBe(300000);
+    expect(calcItemDailyCostOnDate(course, '2025-12-31')).toBe(0);
+    expect(calcItemDailyCostOnDate(course, '2026-02-01')).toBeCloseTo(3000 / 90, 6);
+    expect(calcItemDailyCostOnDate(course, '2026-04-01')).toBe(0);
+  });
+
   it('旧版周期总金额可换算且保持原日均成本', () => {
     const converted = convertLegacyExpenseAmountInCents('monthly', 300000, '2026-09-01', '2026-09-30');
     expect(converted).toBe(304167);
